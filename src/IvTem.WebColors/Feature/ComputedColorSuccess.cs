@@ -1,10 +1,12 @@
-﻿namespace IvTem.WebColors.Feature;
+﻿using IvTem.WebColors.Abstractions.Model;
+
+namespace IvTem.WebColors.Feature;
 
 public sealed class ComputedColorSuccess : ComputedColorResult
 {
-    public string Color { get; }
+    public IWebColor Color { get; }
 
-    public ComputedColorSuccess(string color) : base (isSuccess: true)
+    public ComputedColorSuccess(IWebColor color) : base (isSuccess: true)
     {
         Color = color;
     }

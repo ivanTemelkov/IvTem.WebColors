@@ -15,4 +15,8 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.17"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\IvTem.WebColors.Abstractions\IvTem.WebColors.Abstractions.csproj" />
+    </ItemGroup>
+
 </Project>

@@ -1,4 +1,6 @@
 ﻿@page "/"
+@using IvTem.WebColors.Abstractions.Model
+@using IvTem.WebColors.Abstractions.Utility
 @using IvTem.WebColors.Feature
 
 <PageTitle>Computed Color</PageTitle>
@@ -24,8 +26,11 @@
             }
             else
             {
-                <div style="color: @computedResult.Color; background-color: @computedResult.BackgroundColor; border-radius: 0.5em; padding: 0.5em; margin-bottom: 0.25em;">
-                    @computedResult.BackgroundColor
+                var color = computedResult.Color.Stringify();
+                var backgroundColor = computedResult.BackgroundColor.Stringify();
+                
+                <div style="color: @color; background-color: @backgroundColor; border-radius: 0.5em; padding: 0.5em; margin-bottom: 0.25em;">
+                    @backgroundColor
                 </div>
             }
         }
@@ -38,14 +43,14 @@
 
 @code {
 
-    private const string DarkColor = "black";
-    private const string LightColor = "white";
+    private static readonly IWebColor DarkColor = new RgbaColor(Red: 0, Green: 0, Blue: 0);
+    private static readonly IWebColor LightColor = new RgbaColor(Red: 255, Green: 255, Blue: 255);
 
     [Inject] private ComputedColorService ComputedColorService { get; set; } = null!;
 
     private string? InputColor { get; set; } = "cyan";
 
-    private List<(string Color, string BackgroundColor, string? Failure)> LastComputedResults { get; set; } = new();
+    private List<(IWebColor Color, IWebColor BackgroundColor, string? Failure)> LastComputedResults { get; set; } = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -62,14 +67,14 @@
         if (string.IsNullOrWhiteSpace(inputColor))
         {
             failureReason = "Cannot covert an empty string to Web Color!";
-            LastComputedResults.Add((DarkColor, string.Empty, failureReason));
+            LastComputedResults.Add((DarkColor, DarkColor, failureReason));
             await InvokeAsync(StateHasChanged);
             return;
         }
         
         var result = await ComputedColorService.GetComputedColor(inputColor);
 
-        string computedColor = string.Empty;
+        IWebColor computedColor = DarkColor;
         switch (result)
         {
             case ComputedColorSuccess success:
@@ -82,8 +87,12 @@
                 failureReason = $"Unexpected {nameof(ComputedColorResult)} type: {result.GetType().Name}!";
                 break;
         }
-        
-        LastComputedResults.Add((DarkColor, computedColor, failureReason));
+
+        var color = computedColor.IsLightColor()
+            ? DarkColor
+            : LightColor;
+
+        LastComputedResults.Add((color, computedColor, failureReason));
         await InvokeAsync(StateHasChanged);
     }
 

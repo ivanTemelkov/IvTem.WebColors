@@ -1,4 +1,5 @@
-﻿using Microsoft.JSInterop;
+﻿using IvTem.WebColors.Abstractions.Utility;
+using Microsoft.JSInterop;
 
 namespace IvTem.WebColors.Feature;
 
@@ -9,7 +10,7 @@ public sealed class ComputedColorService : IAsyncDisposable
     public ComputedColorService(IJSRuntime jsRuntime)
     {
         // TODO Should I use try-catch here?
-        ModuleTask = new Lazy<Task<IJSObjectReference>>(() 
+        ModuleTask = new Lazy<Task<IJSObjectReference>>(()
             => jsRuntime
                 .InvokeAsync<IJSObjectReference>("import", "./_content/IvTem.WebColors/js/computedStyleService.js")
                 .AsTask());
@@ -22,9 +23,13 @@ public sealed class ComputedColorService : IAsyncDisposable
             var module = await ModuleTask.Value;
             var color = await module.InvokeAsync<string>("getComputedColor", colorString);
 
-            return string.IsNullOrEmpty(color)
-                ? new ComputedColorFailure($"Failed to convert '{colorString}' to a Web Color.")
-                : new ComputedColorSuccess(color);
+            if (string.IsNullOrEmpty(color))
+                return new ComputedColorFailure($"Failed to convert '{colorString}' to a Web Color.");
+
+            if (ColorUtil.TryParseWebColor(color, out var webColor) == false)
+                return new ComputedColorFailure($"Failed to convert '{colorString}' to a Web Color.");
+
+            return new ComputedColorSuccess(webColor);
         }
         catch (Exception e)
         {
