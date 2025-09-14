@@ -1,0 +1,101 @@
+# .github/workflows/publish.yml
+name: publish-nuget
+
+on:
+  push:
+    tags:
+      - "v*.*.*"                 # e.g. v1.2.3 or v1.2.3-rc.1
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 1.2.3 or 1.2.3-rc.1)"
+        required: false
+
+jobs:
+  pack-and-publish:
+    runs-on: ubuntu-latest
+
+    env:
+      PROJECT_ABSTRACTIONS: src/IvTem.WebColors.Abstractions/IvTem.WebColors.Abstractions.csproj
+      PROJECT_MAIN:         src/IvTem.WebColors/IvTem.WebColors.csproj
+      ARTIFACTS_DIR:        artifacts
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+          cache: false            # avoids lock-file error
+
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.version }}" ]]; then
+            VER="${{ github.event.inputs.version }}"
+          else
+            REF="${GITHUB_REF_NAME}"   # e.g. v1.2.3
+            VER="${REF#v}"             # strip leading 'v'
+          fi
+          echo "PACKAGE_VERSION=$VER" >> $GITHUB_ENV
+          echo "Resolved version: $VER"
+
+      # ---- Restore ----
+      - name: Restore
+        run: |
+          dotnet restore "${{ env.PROJECT_ABSTRACTIONS }}"
+          dotnet restore "${{ env.PROJECT_MAIN }}"
+
+      # ---- Build (Release) ----
+      - name: Build
+        run: |
+          dotnet build "${{ env.PROJECT_ABSTRACTIONS }}" -c Release --no-restore
+          dotnet build "${{ env.PROJECT_MAIN }}" -c Release --no-restore
+
+      # ---- Pack (Abstractions first) ----
+      - name: Pack Abstractions
+        run: >
+          dotnet pack "${{ env.PROJECT_ABSTRACTIONS }}"
+          -c Release
+          -o "${{ env.ARTIFACTS_DIR }}"
+          /p:Version=${{ env.PACKAGE_VERSION }}
+          /p:ContinuousIntegrationBuild=true
+          /p:IncludeSymbols=true
+          /p:SymbolPackageFormat=snupkg
+
+      - name: Pack Main (IvTem.WebColors)
+        run: >
+          dotnet pack "${{ env.PROJECT_MAIN }}"
+          -c Release
+          -o "${{ env.ARTIFACTS_DIR }}"
+          /p:Version=${{ env.PACKAGE_VERSION }}
+          /p:ContinuousIntegrationBuild=true
+          /p:IncludeSymbols=true
+          /p:SymbolPackageFormat=snupkg
+
+      # ---- Publish to nuget.org ----
+      - name: Publish Abstractions to nuget.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push "${{ env.ARTIFACTS_DIR }}/IvTem.WebColors.Abstractions.*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push "${{ env.ARTIFACTS_DIR }}/IvTem.WebColors.Abstractions.*.snupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Publish Main to nuget.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push "${{ env.ARTIFACTS_DIR }}/IvTem.WebColors.*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push "${{ env.ARTIFACTS_DIR }}/IvTem.WebColors.*.snupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      # Optional: Upload artifacts for inspection
+      # - name: Upload artifacts
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: packages
+      #     path: ${{ env.ARTIFACTS_DIR }}/*

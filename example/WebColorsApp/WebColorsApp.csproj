@@ -9,5 +9,5 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\IvTem.WebColors\IvTem.WebColors.csproj" />
     </ItemGroup>
-
+    
 </Project>
