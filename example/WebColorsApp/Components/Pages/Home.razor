@@ -1,0 +1,96 @@
+﻿@page "/"
+@using IvTem.WebColors.Feature
+
+<PageTitle>Computed Color</PageTitle>
+
+<div style="display: flex; flex-direction: column; margin: 0.25em;">
+    <div style="flex: 0 0 auto;padding: 0.5em 0;display: flex;flex-direction: row;align-items: center;">
+        <div style="flex: 0 0 auto;">
+            Background Color: 
+        </div>
+        <div style="flex: 1 1 auto;">
+            <InputText Value="@InputColor" ValueChanged="@ColorValueChanged" ValueExpression="() => InputColor"/>    
+        </div>
+    </div>    
+    <div style="flex: 0 0 auto; padding: 0.5em 0;">
+        
+        @foreach (var computedResult in LastComputedResults)
+        {
+            @if (computedResult.Failure is not null)
+            {
+                <div style="color: tomato; padding: 0.5em; border: 0.25em solid tomato; border-radius: 0.5em; margin-bottom: 0.25em;">
+                    @computedResult.Failure
+                </div>
+            }
+            else
+            {
+                <div style="color: @computedResult.Color; background-color: @computedResult.BackgroundColor; border-radius: 0.5em; padding: 0.5em; margin-bottom: 0.25em;">
+                    @computedResult.BackgroundColor
+                </div>
+            }
+        }
+    </div>    
+</div>
+
+
+
+
+
+@code {
+
+    private const string DarkColor = "black";
+    private const string LightColor = "white";
+
+    [Inject] private ComputedColorService ComputedColorService { get; set; } = null!;
+
+    private string? InputColor { get; set; } = "cyan";
+
+    private List<(string Color, string BackgroundColor, string? Failure)> LastComputedResults { get; set; } = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender == false)
+            return;
+
+        await ComputeColor(InputColor);
+    }
+
+    private async Task ComputeColor(string? inputColor)
+    {
+        string? failureReason = null;
+        
+        if (string.IsNullOrWhiteSpace(inputColor))
+        {
+            failureReason = "Cannot covert an empty string to Web Color!";
+            LastComputedResults.Add((DarkColor, string.Empty, failureReason));
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        
+        var result = await ComputedColorService.GetComputedColor(inputColor);
+
+        string computedColor = string.Empty;
+        switch (result)
+        {
+            case ComputedColorSuccess success:
+                computedColor = success.Color;
+                break;
+            case ComputedColorFailure failure:
+                failureReason = failure.Reason;
+                break;
+            default:
+                failureReason = $"Unexpected {nameof(ComputedColorResult)} type: {result.GetType().Name}!";
+                break;
+        }
+        
+        LastComputedResults.Add((DarkColor, computedColor, failureReason));
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private Task ColorValueChanged(string? inputColor)
+    {
+        InputColor = inputColor;
+        return ComputeColor(InputColor);
+    }
+
+}
