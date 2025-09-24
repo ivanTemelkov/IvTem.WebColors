@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using IvTem.WebColors.Abstractions.Extensions
 @using IvTem.WebColors.Abstractions.Model
 @using IvTem.WebColors.Abstractions.Utility
 @using IvTem.WebColors.Feature
@@ -27,10 +28,14 @@
             else
             {
                 var color = computedResult.Color.Stringify();
-                var backgroundColor = computedResult.BackgroundColor.Stringify();
+                var backgroundColor = computedResult.BackgroundColor.ToRgb().Stringify();
+                // var backgroundColor = computedResult.BackgroundColor.ToHsl().Stringify();
                 
-                <div style="color: @color; background-color: @backgroundColor; border-radius: 0.5em; padding: 0.5em; margin-bottom: 0.25em;">
-                    @backgroundColor
+                <div style="color: @color; background-color: @backgroundColor; border-radius: 0.5em; padding: 0.5em; margin-bottom: 0.25em; display: flex; flex-direction: row;">
+                    <div style="flex: 1 1 auto;">
+                        @backgroundColor    
+                    </div>
+                    
                 </div>
             }
         }
@@ -43,8 +48,8 @@
 
 @code {
 
-    private static readonly IWebColor DarkColor = new RgbaColor(Red: 0, Green: 0, Blue: 0);
-    private static readonly IWebColor LightColor = new RgbaColor(Red: 255, Green: 255, Blue: 255);
+    private static readonly IWebColor DarkColor = new RgbaColor(red: 0, green: 0, blue: 0);
+    private static readonly IWebColor LightColor = new RgbaColor(red: 255, green: 255, blue: 255);
 
     [Inject] private ComputedColorService ComputedColorService { get; set; } = null!;
 

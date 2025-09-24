@@ -3,6 +3,12 @@ using Microsoft.JSInterop;
 
 namespace IvTem.WebColors.Feature;
 
+public sealed class HardcodedColorService
+{
+    // TODO Use the static ColorList class to implement the service
+    
+}
+
 public sealed class ComputedColorService : IAsyncDisposable
 {
     private Lazy<Task<IJSObjectReference>> ModuleTask { get; }

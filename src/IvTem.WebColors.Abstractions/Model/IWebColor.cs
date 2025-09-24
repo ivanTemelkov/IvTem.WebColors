@@ -2,5 +2,6 @@
 
 public interface IWebColor
 {
+    public bool IsLight { get; }
     string Stringify();
 }

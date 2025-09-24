@@ -12,6 +12,12 @@ public static partial class ColorUtil
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ComputedColorRegex();
 
+    
+    [GeneratedRegex(
+        @"^#(?:(?<r>[0-9A-F]{2})(?<g>[0-9A-F]{2})(?<b>[0-9A-F]{2})(?<a>[0-9A-F]{2})?|(?<r>[0-9A-F])(?<g>[0-9A-F])(?<b>[0-9A-F])(?<a>[0-9A-F])?)$",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex HexRegex();
+    
     public static bool TryParseWebColor(
         string? computedColor,
         out RgbaColor webColor)
@@ -46,11 +52,59 @@ public static partial class ColorUtil
     public static bool IsLightColor([NotNull] this IWebColor webColor)
     {
         var (red, green, blue, _) = webColor.ToRgb();
+        return IsLightColor(red, green, blue);
+    }
+    
+    // Uses the WCAG definition of relative luminance
+    // https://www.w3.org/WAI/GL/wiki/Relative_luminance
+    public static bool IsLightColor(byte red, byte green, byte blue)
+    {
         var relativeLuminance = GetRelativeLuminance(red, green, blue);
         return relativeLuminance > 0.179;
     }
+    
+    /// <summary>
+    /// Try to parse a CSS hex color string into RGBA byte values.
+    /// Accepts #RGB, #RGBA, #RRGGBB, #RRGGBBAA.
+    /// If alpha is omitted, it defaults to 255 (opaque).
+    /// </summary>
+    public static bool TryParse(
+        string input,
+        out byte red,
+        out byte green,
+        out byte blue,
+        out byte alpha)
+    {
+        red = green = blue = 0;
+        alpha = 255;
 
-    private static double GetRelativeLuminance(byte red, byte green, byte blue)
+        var match = HexRegex().Match(input);
+        
+        if (match.Success == false)
+            return false;
+
+        red = HexToByte(match.Groups["red"].Value);
+        green = HexToByte(match.Groups["green"].Value);
+        blue = HexToByte(match.Groups["blue"].Value);
+
+        var alphaGroup = match.Groups["alpha"];
+        
+        if (alphaGroup is { Success: true, Length: > 0 })
+            alpha = HexToByte(alphaGroup.Value);
+
+        return true;
+    }
+
+    private static byte HexToByte(string hexValue)
+    {
+        // If shorthand (1 digit), duplicate it (e.g., "f" -> "ff")
+        if (hexValue.Length == 1)
+            hexValue = new string(hexValue[0], 2);
+        
+        return Convert.ToByte(hexValue, 16);
+    }
+
+    public static double GetRelativeLuminance(byte red, byte green, byte blue)
     {
         // Normalize RGB components to 0..1
         var redNormalized = red / 255.0;
