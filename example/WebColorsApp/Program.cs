@@ -1,4 +1,5 @@
 using IvTem.WebColors.Feature;
+using IvTem.WebColors.Feature.ColorService;
 using WebColorsApp.Components;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -1,15 +1,10 @@
-﻿using IvTem.WebColors.Abstractions.Utility;
+﻿using IvTem.WebColors.Abstractions.Feature.ColorService;
+using IvTem.WebColors.Abstractions.Utility;
 using Microsoft.JSInterop;
 
-namespace IvTem.WebColors.Feature;
+namespace IvTem.WebColors.Feature.ColorService;
 
-public sealed class HardcodedColorService
-{
-    // TODO Use the static ColorList class to implement the service
-    
-}
-
-public sealed class ComputedColorService : IAsyncDisposable
+public sealed class ComputedColorService : IWebColorService, IAsyncDisposable
 {
     private Lazy<Task<IJSObjectReference>> ModuleTask { get; }
 
@@ -22,7 +17,7 @@ public sealed class ComputedColorService : IAsyncDisposable
                 .AsTask());
     }
 
-    public async ValueTask<ComputedColorResult> GetComputedColor(string colorString)
+    public async ValueTask<WebColorResult> GetColor(string colorString)
     {
         try
         {
@@ -30,16 +25,16 @@ public sealed class ComputedColorService : IAsyncDisposable
             var color = await module.InvokeAsync<string>("getComputedColor", colorString);
 
             if (string.IsNullOrEmpty(color))
-                return new ComputedColorFailure($"Failed to convert '{colorString}' to a Web Color.");
+                return new WebColorFailure($"Failed to convert '{colorString}' to a Web Color.");
 
             if (ColorUtil.TryParseWebColor(color, out var webColor) == false)
-                return new ComputedColorFailure($"Failed to convert '{colorString}' to a Web Color.");
+                return new WebColorFailure($"Failed to convert '{colorString}' to a Web Color.");
 
-            return new ComputedColorSuccess(webColor);
+            return new WebColorSuccess(webColor);
         }
         catch (Exception e)
         {
-            return new ComputedColorFailure(e.Message);
+            return new WebColorFailure(e.Message);
         }
     }
 

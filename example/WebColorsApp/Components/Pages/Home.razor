@@ -1,8 +1,10 @@
 ﻿@page "/"
+@using System.Collections.Immutable
 @using IvTem.WebColors.Abstractions.Extensions
+@using IvTem.WebColors.Abstractions.Feature.ColorService
 @using IvTem.WebColors.Abstractions.Model
 @using IvTem.WebColors.Abstractions.Utility
-@using IvTem.WebColors.Feature
+@using IvTem.WebColors.Feature.ColorService
 
 <PageTitle>Computed Color</PageTitle>
 
@@ -30,15 +32,32 @@
                 var color = computedResult.Color.Stringify();
                 var backgroundColor = computedResult.BackgroundColor.ToRgb().Stringify();
                 // var backgroundColor = computedResult.BackgroundColor.ToHsl().Stringify();
-                
+        
                 <div style="color: @color; background-color: @backgroundColor; border-radius: 0.5em; padding: 0.5em; margin-bottom: 0.25em; display: flex; flex-direction: row;">
                     <div style="flex: 1 1 auto;">
-                        @backgroundColor    
+                        @backgroundColor
                     </div>
-                    
+        
                 </div>
             }
         }
+
+        @* @if (ComputedColors.Length > 0) *@
+        @* { *@
+        @*     @for (var i = 0; i < ComputedColors.Length; i++) *@
+        @*     { *@
+        @*         var color = ComputedColors[i]; *@
+        @*         <div @key="@color.ColorName" style="display: flex; flex-direction: row; background-color: @color.ColorName;"> *@
+        @*             <div>@i</div> *@
+        @*             <div>@color.ColorName</div> *@
+        @*             <div style="=display: flex; flex-direction: column;"> *@
+        @*                 <div>@color.Color</div> *@
+        @*                 <div>@color.ComputedColor</div>     *@
+        @*             </div> *@
+        @*         </div> *@
+        @*     }     *@
+        @* } *@
+        
     </div>    
 </div>
 
@@ -57,14 +76,39 @@
 
     private List<(IWebColor Color, IWebColor BackgroundColor, string? Failure)> LastComputedResults { get; set; } = new();
 
+    private ImmutableArray<(string ColorName, RgbaColor Color, RgbaColor ComputedColor)> ComputedColors { get; set; } = [];
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender == false)
             return;
 
         await ComputeColor(InputColor);
+
+        ComputedColors = await InitializeColors();
+
+        await InvokeAsync(StateHasChanged);
     }
 
+    private async Task<ImmutableArray<(string ColorName, RgbaColor Color, RgbaColor ComputedColor)>> InitializeColors()
+    {
+        List<(string ColorName, RgbaColor Color, RgbaColor ComputedColor)> result = [];
+        foreach (var colorName in ColorList.All.Keys)
+        {
+            var webColorResult = await ComputedColorService.GetColor(colorName);
+            if (webColorResult is WebColorSuccess success && success.Color is RgbaColor rgbaColor)
+            {
+                var color = ColorList.All[colorName];
+                if (color == rgbaColor)
+                {
+                    result.Add((colorName, color, rgbaColor));    
+                }
+            }
+        }
+
+        return [..result];
+    }
+    
     private async Task ComputeColor(string? inputColor)
     {
         string? failureReason = null;
@@ -77,19 +121,19 @@
             return;
         }
         
-        var result = await ComputedColorService.GetComputedColor(inputColor);
+        var result = await ComputedColorService.GetColor(inputColor);
 
         IWebColor computedColor = DarkColor;
         switch (result)
         {
-            case ComputedColorSuccess success:
+            case WebColorSuccess success:
                 computedColor = success.Color;
                 break;
-            case ComputedColorFailure failure:
+            case WebColorFailure failure:
                 failureReason = failure.Reason;
                 break;
             default:
-                failureReason = $"Unexpected {nameof(ComputedColorResult)} type: {result.GetType().Name}!";
+                failureReason = $"Unexpected {nameof(WebColorResult)} type: {result.GetType().Name}!";
                 break;
         }
 
